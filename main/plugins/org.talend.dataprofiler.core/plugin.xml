@@ -1818,6 +1818,16 @@
            version="7.4.1">
      </workspacetask>
   </extension>
+    <extension
+          point="org.talend.core.migrationTask">
+       <workspacetask
+             breaks="7.4.0"
+             class="org.talend.dataprofiler.core.migration2.DQFirstTestMigrationTask"
+             id="org.talend.dataprofiler.core.migration2.DQFirstTestMigrationTask"
+             name="DQFirstTestMigrationTask"
+             version="7.4.1">
+       </workspacetask>
+    </extension>
   
   <extension
         point="org.eclipse.ui.handlers">
