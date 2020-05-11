@@ -12,14 +12,17 @@
 // ============================================================================
 package org.talend.dataprofiler.migration.manager;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
 import org.apache.log4j.Logger;
+import org.talend.commons.utils.VersionUtils;
 import org.talend.dataprofiler.migration.IMigrationTask;
 import org.talend.dataprofiler.migration.IMigrationTask.MigrationTaskCategory;
 import org.talend.dataprofiler.migration.IWorkspaceMigrationTask;
@@ -91,13 +94,66 @@ public class MigrationTaskManagerWithoutUI {
 
         List<IMigrationTask> validTasks = new ArrayList<IMigrationTask>();
 
-        for (IMigrationTask task : tasks) {
+        log.info("------check valid migration begin--------------------");
+        log.info("workspaceVersion: " + workspaceVersion.toString());
+        log.info("currentVersion: " + currentVersion.toString());
 
+        log
+                .info("InternalVersion(org.talend.commons.runtime or .eclipseproduct): "
+                        + VersionUtils.getInternalVersion());
+        log.info("DisplayVersion: " + VersionUtils.getDisplayVersion());
+        log.info("TalendVersion(org.talend.commons.runtime or talend.project): " + VersionUtils.getTalendVersion()); //$NON-NLS-1$
+
+
+        for (IMigrationTask task : tasks) {
             if (task.getTaskCategory() == MigrationTaskCategory.WORKSPACE) {
                 IWorkspaceMigrationTask wTask = (IWorkspaceMigrationTask) task;
                 ProductVersion taskVersion = ProductVersion.fromString(wTask.getVersion());
+                log.info("each task begin");
+                log.info("task version set is : " + taskVersion.toString());
                 if (taskVersion.compareTo(workspaceVersion) > 0 && taskVersion.compareTo(currentVersion) <= 0) {
+                    log
+                            .info("taskVersion.compareTo(workspaceVersion) > 0 && taskVersion.compareTo(currentVersion) <= 0");
+                    log.info("taskID: " + task.getId() + " is valid.");
                     validTasks.add(task);
+                } else if (taskVersion.compareTo(workspaceVersion) == 0) {
+                    // come here means taskversion is the same or lower with workspace version,
+                    // need to check the patch monthly release migration.
+                    // for example: when workspace is 731 or 731R4
+                    log.info("taskVersion.compareTo(workspaceVersion) == 0");
+
+                    // DisplayVersion: 7.3.1.20200417_1111-patch
+                    String displayVersion = VersionUtils.getDisplayVersion();
+                    if (displayVersion.endsWith("-patch")) { // means the studio with patch
+                        // only to patch studio need to check these tasks
+                        log.info("displayVersion endsWith -patch ");
+                        /// taskVersionWithDate: taskVersion +"."+ task.getOrder() (e.g.:7.3.1.20200507)
+                        Date d = task.getOrder();
+                        d.setMonth(d.getMonth() - 1);
+                        String taskVersionWithDate = taskVersion + "." + new SimpleDateFormat("yyyyMMdd").format(d);
+
+                        if (displayVersion.compareTo(taskVersionWithDate) < 0) {// -1
+                            log
+                                    .info("task version+date " + taskVersionWithDate + " is later then DisplayVersion "
+                                            + displayVersion + " so is valid task"); // 7.3.1.20200507
+                            log.info("taskID: " + task.getId() + " is valid.");
+                            validTasks.add(task);
+                        } else {
+                            log
+                                    .info("task version+date " + taskVersionWithDate
+                                            + " is NOT later then DisplayVersion " + displayVersion
+                                            + " so is invalid task");
+                            log.info("taskID: " + task.getId() + " is invalid.");
+                        }
+
+                    } else { // means 731 release studio without patch
+                        // DisplayVersion: 7.3.1.20200214_0837
+                        // then import 731 to 731 version task should be invalid
+                        log.info("displayVersion does NOT endsWith -patch ");
+                        log.info("taskID: " + task.getId() + " is invalid.");
+                    }
+                } else {
+                    log.info("taskID: " + task.getId() + " is invalid.");
                 }
             }
 
@@ -105,6 +161,7 @@ public class MigrationTaskManagerWithoutUI {
                 validTasks.add(task);
             }
         }
+        log.info("------check valid migration end --------------------");
 
         return validTasks;
     }
