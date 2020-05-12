@@ -12,12 +12,10 @@
 // ============================================================================
 package org.talend.dataprofiler.migration.manager;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -28,6 +26,7 @@ import org.talend.dataprofiler.migration.IMigrationTask.MigrationTaskCategory;
 import org.talend.dataprofiler.migration.IWorkspaceMigrationTask;
 import org.talend.dataprofiler.migration.IWorkspaceMigrationTask.MigrationTaskType;
 import org.talend.dataprofiler.migration.MigrationPlugin;
+import org.talend.dataprofiler.migration.helper.ProductVersionExtended;
 import org.talend.dataprofiler.migration.helper.VersionComparator;
 import org.talend.utils.ProductVersion;
 
@@ -105,11 +104,10 @@ public class MigrationTaskManagerWithoutUI {
                     // support the patch monthly release migration.
                     // for example: when workspace is 731 or 731R4
                     String displayVersion = VersionUtils.getDisplayVersion(); // DisplayVersion: 7.3.1.20200417_1111-patch
-                    if (displayVersion.endsWith("-patch")) { // means the studio with patch
-                        Date taskDate = task.getOrder();
-                        taskDate.setMonth(taskDate.getMonth() - 1);
-                        String taskVersionWithDate = taskVersion + "." + new SimpleDateFormat("yyyyMMdd").format(taskDate);
-                        if (displayVersion.compareTo(taskVersionWithDate) < 0) {
+                    if (displayVersion.endsWith("-patch")) { // means the studio with patch //$NON-NLS-1$
+                        ProductVersionExtended displayVersionE = ProductVersionExtended.fromString(displayVersion);
+                        ProductVersionExtended taskVersionE = new ProductVersionExtended(taskVersion, task.getOrder());
+                        if (displayVersionE.compareTo(taskVersionE) < 0) {
                             validTasks.add(task);
                         }
                     }
