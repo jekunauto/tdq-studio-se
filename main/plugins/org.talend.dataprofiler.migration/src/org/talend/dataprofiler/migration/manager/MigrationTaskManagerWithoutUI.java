@@ -27,7 +27,6 @@ import org.talend.dataprofiler.migration.IWorkspaceMigrationTask;
 import org.talend.dataprofiler.migration.IWorkspaceMigrationTask.MigrationTaskType;
 import org.talend.dataprofiler.migration.MigrationPlugin;
 import org.talend.dataprofiler.migration.helper.ProductVersionExtended;
-import org.talend.dataprofiler.migration.helper.VersionComparator;
 import org.talend.utils.ProductVersion;
 
 /**
@@ -100,7 +99,7 @@ public class MigrationTaskManagerWithoutUI {
                 ProductVersion taskVersion = ProductVersion.fromString(wTask.getVersion());
                 if (taskVersion.compareTo(workspaceVersion) > 0 && taskVersion.compareTo(currentVersion) <= 0) {
                     validTasks.add(task);
-                } else if (VersionComparator.isEqual(taskVersion, workspaceVersion)) {
+                } else if (taskVersion.compareTo(workspaceVersion) == 0) {
                     // support the patch monthly release migration.
                     // for example: when workspace is 731 or 731R4
                     String displayVersion = VersionUtils.getDisplayVersion(); // DisplayVersion: 7.3.1.20200417_1111-patch
