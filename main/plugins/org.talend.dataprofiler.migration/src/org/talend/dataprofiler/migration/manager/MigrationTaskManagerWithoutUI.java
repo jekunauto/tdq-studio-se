@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -26,7 +27,6 @@ import org.talend.dataprofiler.migration.IMigrationTask.MigrationTaskCategory;
 import org.talend.dataprofiler.migration.IWorkspaceMigrationTask;
 import org.talend.dataprofiler.migration.IWorkspaceMigrationTask.MigrationTaskType;
 import org.talend.dataprofiler.migration.MigrationPlugin;
-import org.talend.dataprofiler.migration.helper.ProductVersionExtended;
 import org.talend.utils.ProductVersion;
 
 /**
@@ -92,28 +92,73 @@ public class MigrationTaskManagerWithoutUI {
             List<IMigrationTask> tasks) {
 
         List<IMigrationTask> validTasks = new ArrayList<IMigrationTask>();
-
+        if (log.isInfoEnabled()) {
+            log.info("workspaceVersion: " + workspaceVersion); //$NON-NLS-1$
+            log.info("currentVersion: " + currentVersion); //$NON-NLS-1$
+        }
         for (IMigrationTask task : tasks) {
             if (task.getTaskCategory() == MigrationTaskCategory.WORKSPACE) {
                 IWorkspaceMigrationTask wTask = (IWorkspaceMigrationTask) task;
                 ProductVersion taskVersion = ProductVersion.fromString(wTask.getVersion());
+                if (log.isInfoEnabled()) {
+                    log.info("taskVersion: " + taskVersion); //$NON-NLS-1$
+                }
                 if (taskVersion.compareTo(workspaceVersion) > 0 && taskVersion.compareTo(currentVersion) <= 0) {
+                    if (log.isInfoEnabled()) {
+                        log
+                                .info(taskVersion + " > " + workspaceVersion + "&&" + taskVersion + "<=" //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+                                        + currentVersion + ", so"); //$NON-NLS-1$
+                        log.info(task.getId() + " is valid task"); //$NON-NLS-1$
+                    }
                     validTasks.add(task);
                 } else if (taskVersion.compareTo(workspaceVersion) == 0) {
                     // support the patch monthly release migration.
                     // for example: when workspace is 731 or 731R4
-                    String displayVersion = VersionUtils.getDisplayVersion(); // DisplayVersion: 7.3.1.20200417_1111-patch
-                    if (displayVersion.endsWith("-patch")) { // means the studio with patch //$NON-NLS-1$
-                        ProductVersionExtended displayVersionE = ProductVersionExtended.fromString(displayVersion);
-                        ProductVersionExtended taskVersionE = new ProductVersionExtended(taskVersion, task.getOrder());
-                        if (displayVersionE.compareTo(taskVersionE) < 0) {
-                            validTasks.add(task);
+                    // 7.3.1-R2020-04 DisplayVersion format is: 7.3.1.20200417_1111-patch
+                    String displayVersion = VersionUtils.getDisplayVersion();
+                    if (log.isInfoEnabled()) {
+                        log.info(taskVersion + "=" + workspaceVersion); //$NON-NLS-1$
+                        log.info("current studio displayVersion is: " + displayVersion); //$NON-NLS-1$
+                    }
+                    if (displayVersion.endsWith("-patch")) {
+                        if (log.isInfoEnabled()) {
+                            log.info("current studio is a patched studio"); //$NON-NLS-1$
                         }
+                        ProductVersion displayVersionE = ProductVersion.fromString(displayVersion, true, true);
+                        Date taskDate = task.getOrder();
+                        taskDate.setMonth(taskDate.getMonth() - 1);
+                        // migration task Version format is: 7.3.1.20200507
+                        ProductVersion taskVersionE = new ProductVersion(taskVersion, taskDate);
+                        if (displayVersionE.compareTo(taskVersionE) < 0) {
+                            if (log.isInfoEnabled()) {
+                                log.info(displayVersionE + "<" + taskVersionE + ", so"); //$NON-NLS-1$ //$NON-NLS-2$
+                                log.info(task.getId() + " is valid task"); //$NON-NLS-1$
+                            }
+                            validTasks.add(task);
+                        } else {
+                            if (log.isInfoEnabled()) {
+                                log.info(displayVersionE + " is not < " + taskVersionE + ", so"); //$NON-NLS-1$ //$NON-NLS-2$
+                                log.info(task.getId() + " is NOT valid task"); //$NON-NLS-1$
+                            }
+                        }
+                    } else {
+                        if (log.isInfoEnabled()) {
+                            log.info("current studio displayVersion is NOT ends with -patch, so"); //$NON-NLS-1$
+                            log.info(task.getId() + " is NOT valid task"); //$NON-NLS-1$
+                        }
+                    }
+                } else {
+                    if (log.isInfoEnabled()) {
+                        log.info("current studio displayVersion is NOT ends with -patch, so"); //$NON-NLS-1$
+                        log.info(task.getId() + " is NOT valid task"); //$NON-NLS-1$
                     }
                 }
             }
 
             if (task.getTaskCategory() == MigrationTaskCategory.PROJECT) {
+                if (log.isInfoEnabled()) {
+                    log.info(task.getId() + " is project valid task"); //$NON-NLS-1$
+                }
                 validTasks.add(task);
             }
         }
