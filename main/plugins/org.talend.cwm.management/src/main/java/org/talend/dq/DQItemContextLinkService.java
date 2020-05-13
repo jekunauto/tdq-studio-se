@@ -58,14 +58,14 @@ public class DQItemContextLinkService implements IItemContextLinkService {
             if (tdqAnalysisItem.getAnalysis() != null) {
                 contextTypeList.addAll(tdqAnalysisItem.getAnalysis().getContextType());
             }
-            return ContextLinkService.saveContextLink(contextTypeList, item.getProperty().getId());
+            return ContextLinkService.getInstance().saveContextLink(contextTypeList, item);
         } else if (item instanceof TDQReportItem) {
             TDQReportItem tdqReportItem = (TDQReportItem) item;
             List<ContextType> contextTypeList = new ArrayList<ContextType>();
             if (tdqReportItem.getReport() != null) {
                 contextTypeList.addAll(((TdReport) tdqReportItem.getReport()).getContext());
             }
-            return ContextLinkService.saveContextLink(contextTypeList, item.getProperty().getId());
+            return ContextLinkService.getInstance().saveContextLink(contextTypeList, item);
         }
         return false;
     }
