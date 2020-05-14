@@ -18,6 +18,7 @@ import java.util.List;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.core.model.context.link.ContextLinkService;
 import org.talend.core.model.context.link.IItemContextLinkService;
+import org.talend.core.model.context.link.ItemContextLink;
 import org.talend.core.model.properties.Item;
 import org.talend.dataquality.properties.TDQAnalysisItem;
 import org.talend.dataquality.properties.TDQReportItem;
@@ -68,6 +69,17 @@ public class DQItemContextLinkService implements IItemContextLinkService {
             return ContextLinkService.getInstance().saveContextLink(contextTypeList, item);
         }
         return false;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * org.talend.core.model.context.link.IItemContextLinkService#loadItemLink(org.talend.core.model.properties.Item)
+     */
+    @Override
+    public ItemContextLink loadItemLink(Item item) throws PersistenceException {
+        return ContextLinkService.getInstance().loadContextLinkFromJson(item);
     }
 
 }
