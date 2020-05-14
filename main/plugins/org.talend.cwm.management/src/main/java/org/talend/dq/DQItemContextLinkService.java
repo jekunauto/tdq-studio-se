@@ -12,7 +12,6 @@
 // ============================================================================
 package org.talend.dq;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.talend.commons.exception.PersistenceException;
@@ -22,8 +21,8 @@ import org.talend.core.model.context.link.ItemContextLink;
 import org.talend.core.model.properties.Item;
 import org.talend.dataquality.properties.TDQAnalysisItem;
 import org.talend.dataquality.properties.TDQReportItem;
-import org.talend.dataquality.reports.TdReport;
 import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
+import org.talend.dq.helper.ContextHelper;
 
 /**
  * created by msjian on 2020年5月6日
@@ -53,22 +52,10 @@ public class DQItemContextLinkService implements IItemContextLinkService {
      */
     @Override
     public boolean saveItemLink(Item item) throws PersistenceException {
-        if (item instanceof TDQAnalysisItem) {
-            TDQAnalysisItem tdqAnalysisItem = (TDQAnalysisItem) item;
-            List<ContextType> contextTypeList = new ArrayList<ContextType>();
-            if (tdqAnalysisItem.getAnalysis() != null) {
-                contextTypeList.addAll(tdqAnalysisItem.getAnalysis().getContextType());
-            }
-            return ContextLinkService.getInstance().saveContextLink(contextTypeList, item);
-        } else if (item instanceof TDQReportItem) {
-            TDQReportItem tdqReportItem = (TDQReportItem) item;
-            List<ContextType> contextTypeList = new ArrayList<ContextType>();
-            if (tdqReportItem.getReport() != null) {
-                contextTypeList.addAll(((TdReport) tdqReportItem.getReport()).getContext());
-            }
-            return ContextLinkService.getInstance().saveContextLink(contextTypeList, item);
-        }
-        return false;
+        // here item can only be TDQAnalysisItem or TDQReportItem
+        // for ConnectionItem, will do save at ContextLinkService.doSaveContextLink(item)
+        List<ContextType> contextTypeList = ContextHelper.getAllContextType(item);
+        return ContextLinkService.getInstance().saveContextLink(contextTypeList, item);
     }
 
     /*
