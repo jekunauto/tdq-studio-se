@@ -1,6 +1,6 @@
 // ============================================================================
 //
-// Copyright (C) 2006-2016 Talend Inc. - www.talend.com
+// Copyright (C) 2006-2020 Talend Inc. - www.talend.com
 //
 // This source code is available under agreement available at
 // %InstallDIR%\features\org.talend.rcp.branding.%PRODUCTNAME%\%PRODUCTNAME%license.txt
@@ -79,7 +79,7 @@ public class DQItemContextLinkService implements IItemContextLinkService {
      */
     @Override
     public ItemContextLink loadItemLink(Item item) throws PersistenceException {
-        return ContextLinkService.getInstance().loadContextLinkFromJson(item);
+        return ContextLinkService.getInstance().doLoadContextLinkFromJson(item);
     }
 
 }
