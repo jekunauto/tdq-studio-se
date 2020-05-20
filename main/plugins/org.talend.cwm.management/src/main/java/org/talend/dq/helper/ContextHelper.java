@@ -28,6 +28,7 @@ import org.talend.core.model.context.ContextUtils;
 import org.talend.core.model.context.JobContextManager;
 import org.talend.core.model.context.link.ContextLinkService;
 import org.talend.core.model.context.link.ItemContextLink;
+import org.talend.core.model.properties.ConnectionItem;
 import org.talend.core.model.properties.ContextItem;
 import org.talend.core.model.properties.Item;
 import org.talend.core.model.utils.ContextParameterUtils;
@@ -405,6 +406,9 @@ public final class ContextHelper {
         return paramName == null ? null : CONTEXT_PREFFIX + paramName;
     }
 
+    public static boolean isDQSupportContextItem(Item item) {
+        return item instanceof TDQAnalysisItem || item instanceof TDQReportItem || item instanceof ConnectionItem;
+    }
     public static EList<ContextType> getAllContextType(Item item) {
         // here is some related methods on DQ side
         // more can refer to ContextUtils
