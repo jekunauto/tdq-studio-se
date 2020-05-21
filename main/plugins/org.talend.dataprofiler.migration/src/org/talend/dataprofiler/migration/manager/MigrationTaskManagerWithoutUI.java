@@ -101,7 +101,7 @@ public class MigrationTaskManagerWithoutUI {
                 IWorkspaceMigrationTask wTask = (IWorkspaceMigrationTask) task;
                 ProductVersion taskVersion = ProductVersion.fromString(wTask.getVersion());
                 if (log.isInfoEnabled()) {
-                    log.info("taskVersion: " + taskVersion); //$NON-NLS-1$
+                    log.info("one new task check begin and current taskVersion: " + taskVersion); //$NON-NLS-1$
                 }
                 if (taskVersion.compareTo(workspaceVersion) > 0 && taskVersion.compareTo(currentVersion) <= 0) {
                     if (log.isInfoEnabled()) {
@@ -117,10 +117,10 @@ public class MigrationTaskManagerWithoutUI {
                     // 7.3.1-R2020-04 DisplayVersion format is: 7.3.1.20200417_1111-patch
                     String displayVersion = VersionUtils.getDisplayVersion();
                     if (log.isInfoEnabled()) {
-                        log.info(taskVersion + "=" + workspaceVersion); //$NON-NLS-1$
+                        log.info("taskVersion = workspaceVersion: " + taskVersion + " = " + workspaceVersion); //$NON-NLS-1$ //$NON-NLS-2$
                         log.info("current studio displayVersion is: " + displayVersion); //$NON-NLS-1$
                     }
-                    if (displayVersion.endsWith("-patch")) {
+                    if (displayVersion.endsWith("-patch")) { //$NON-NLS-1$
                         if (log.isInfoEnabled()) {
                             log.info("current studio is a patched studio"); //$NON-NLS-1$
                         }
@@ -131,25 +131,28 @@ public class MigrationTaskManagerWithoutUI {
                         ProductVersion taskVersionE = new ProductVersion(taskVersion, taskDate);
                         if (displayVersionE.compareTo(taskVersionE) < 0) {
                             if (log.isInfoEnabled()) {
-                                log.info(displayVersionE + "<" + taskVersionE + ", so"); //$NON-NLS-1$ //$NON-NLS-2$
+                                log
+                                        .info("displayVersionE < taskVersionE: " + displayVersionE + "<" + taskVersionE //$NON-NLS-1$ //$NON-NLS-2$
+                                                + ", so"); //$NON-NLS-1$
                                 log.info(task.getId() + " is valid task"); //$NON-NLS-1$
                             }
                             validTasks.add(task);
                         } else {
                             if (log.isInfoEnabled()) {
-                                log.info(displayVersionE + " is not < " + taskVersionE + ", so"); //$NON-NLS-1$ //$NON-NLS-2$
+                                log
+                                        .info("displayVersionE is not < taskVersionE: " + displayVersionE + " is not < " //$NON-NLS-1$ //$NON-NLS-2$
+                                                + taskVersionE + ", so"); //$NON-NLS-1$
                                 log.info(task.getId() + " is NOT valid task"); //$NON-NLS-1$
                             }
                         }
                     } else {
                         if (log.isInfoEnabled()) {
-                            log.info("current studio displayVersion is NOT ends with -patch, so"); //$NON-NLS-1$
+                            log.info("current studio is a NOT patched studio, so"); //$NON-NLS-1$
                             log.info(task.getId() + " is NOT valid task"); //$NON-NLS-1$
                         }
                     }
                 } else {
                     if (log.isInfoEnabled()) {
-                        log.info("current studio displayVersion is NOT ends with -patch, so"); //$NON-NLS-1$
                         log.info(task.getId() + " is NOT valid task"); //$NON-NLS-1$
                     }
                 }

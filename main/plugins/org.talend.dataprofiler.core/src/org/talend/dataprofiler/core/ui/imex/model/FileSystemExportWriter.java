@@ -214,10 +214,13 @@ public class FileSystemExportWriter implements IExportWriter {
 
         // TDQ-18173 msjian: export the context link file of analysis, report, connection.
         for (ItemRecord itemRecord: records) {
-            Item item = itemRecord.getProperty().getItem();
-            if (ContextHelper.isDQSupportContextItem(item)) {
-                IFile contextlinkFile = ContextLinkService.calContextLinkFile(item);
-                writeSysFile(contextlinkFile);
+            Property property = itemRecord.getProperty();
+            if (property != null) {
+                Item item = property.getItem();
+                if (ContextHelper.isDQSupportContextItem(item)) {
+                    IFile contextlinkFile = ContextLinkService.calContextLinkFile(item);
+                    writeSysFile(contextlinkFile);
+                }
             }
         }
         // TDQ-18173~
