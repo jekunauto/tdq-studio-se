@@ -12,13 +12,23 @@
 // ============================================================================
 package org.talend.dataprofiler.core.ui.editor.analysis;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.MessageDialogWithToggle;
+import org.eclipse.jface.window.Window;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
@@ -26,10 +36,22 @@ import org.eclipse.ui.forms.editor.IFormPage;
 import org.eclipse.ui.part.FileEditorInput;
 import org.talend.commons.emf.FactoriesUtil;
 import org.talend.commons.exception.ExceptionHandler;
+import org.talend.commons.exception.PersistenceException;
+import org.talend.core.model.context.ContextUtils;
+import org.talend.core.model.context.ContextUtils.ContextItemParamMap;
 import org.talend.core.model.context.JobContextManager;
+import org.talend.core.model.context.link.ContextLinkService;
+import org.talend.core.model.context.link.ContextParamLink;
+import org.talend.core.model.context.link.ItemContextLink;
+import org.talend.core.model.process.IContext;
+import org.talend.core.model.process.IContextParameter;
+import org.talend.core.model.properties.ContextItem;
+import org.talend.core.model.properties.Item;
+import org.talend.core.model.update.UpdateResult;
 import org.talend.core.repository.model.IRepositoryFactory;
 import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.core.repository.model.RepositoryFactoryProvider;
+import org.talend.dataprofiler.core.helper.ContextViewHelper;
 import org.talend.dataprofiler.core.i18n.internal.DefaultMessagesImpl;
 import org.talend.dataprofiler.core.ui.IRuningStatusListener;
 import org.talend.dataprofiler.core.ui.action.actions.DefaultSaveAction;
@@ -45,10 +67,14 @@ import org.talend.dataquality.analysis.AnalysisType;
 import org.talend.dataquality.analysis.ExecutionLanguage;
 import org.talend.dataquality.helpers.AnalysisHelper;
 import org.talend.dataquality.properties.TDQAnalysisItem;
+import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
+import org.talend.dq.helper.PropertyHelper;
 import org.talend.dq.helper.ProxyRepositoryManager;
 import org.talend.dq.helper.resourcehelper.AnaResourceFileHelper;
 import org.talend.dq.nodes.AnalysisRepNode;
 import org.talend.dq.nodes.ReportAnalysisRepNode;
+import org.talend.dq.writer.impl.ElementWriterFactory;
+import org.talend.repository.UpdateRepositoryUtils;
 import org.talend.repository.model.IRepositoryNode;
 import org.talend.repository.model.RepositoryConstants;
 import org.talend.utils.sugars.ReturnCode;
@@ -164,6 +190,7 @@ public class AnalysisEditor extends SupportContextEditor {
             if (masterPage != null) {
                 addPage(masterPage);
                 setPartName(masterPage.getIntactElemenetName());
+                checkContext();
                 initContext();
                 // Added 20130930 TDQ-8117, yyin
                 // init the run analysis action, to give it the analysis item and listener
@@ -183,6 +210,7 @@ public class AnalysisEditor extends SupportContextEditor {
 
     }
 
+
     /**
      * init the context for the analysis.
      */
@@ -190,6 +218,257 @@ public class AnalysisEditor extends SupportContextEditor {
         Analysis analysis = getMasterPage().getCurrentModelElement();
         contextManager = new JobContextManager(analysis.getContextType(), analysis.getDefaultContext());
         this.setLastRunContextGroupName(AnalysisHelper.getContextGroupName(analysis));
+    }
+
+    /**
+     * checkContext. (almost the same logic with ProcessUpdateManager.checkContext(boolean onlySimpleShow))
+     * 
+     */
+    private void checkContext() {
+        Analysis analysis = getMasterPage().getCurrentModelElement();
+
+        // use context link file to check whether the value is the same with repository context
+        Item currentItem = PropertyHelper.getProperty(analysis).getItem();
+
+        boolean onlySimpleShow = true;
+
+        // Map<String, String> contextParamterRenamedMap = ContextHelper.getContextParamterRenamedMap(currentItem);
+
+        List<UpdateResult> contextResults = new ArrayList<UpdateResult>();
+        // final IContextManager contextManager = this.getContextManager();
+        JobContextManager contextManager =
+                new JobContextManager(analysis.getContextType(), analysis.getDefaultContext());
+
+        final String defaultContextName = contextManager.getDefaultContext().getName();
+        // record the unsame
+        ContextItemParamMap unsameMap = new ContextItemParamMap();
+        // built in
+        ContextItemParamMap builtInMap = new ContextItemParamMap();
+        Set<String> builtInSet = new HashSet<String>();
+
+        Map<Item, Map<String, String>> repositoryRenamedMap = new HashMap<Item, Map<String, String>>();
+
+        ContextItemParamMap deleteParams = new ContextItemParamMap();
+
+        final List<ContextItem> allContextItem = ContextUtils.getAllContextItem();
+
+        Set<String> refContextIds = new HashSet<String>();
+
+        // List<IProcess2> openedProcesses = UpdateManagerUtils.getOpenedProcess();
+
+        Map<Item, Set<String>> existedParams = new HashMap<Item, Set<String>>();
+
+        Map<String, Item> tempItemMap = new HashMap<String, Item>();
+        ItemContextLink itemContextLink = null;
+        try {
+            itemContextLink =
+                    ContextLinkService.getInstance().loadContextLinkFromJson(currentItem);
+        } catch (PersistenceException e) {
+            ExceptionHandler.process(e);
+        }
+
+        for (IContext context : contextManager.getListContext()) {
+            for (IContextParameter param : context.getContextParameterList()) {
+                if (!param.isBuiltIn()) {
+                    String source = param.getSource();
+                    String paramName = param.getName();
+                    refContextIds.add(source);
+                    ContextParamLink paramLink = null;
+                    if (itemContextLink != null) {
+                        paramLink = itemContextLink
+                                .findContextParamLinkByName(param.getSource(), context.getName(), param.getName());
+                    }
+
+                    Item item = tempItemMap.get(source);
+                    if (item == null) {
+                        item = ContextUtils.findContextItem(allContextItem, source);
+                        tempItemMap.put(source, item);
+                    }
+                    if (item != null) {
+                        boolean builtin = true;
+                        final ContextType contextType = ContextUtils.getContextTypeByName(item, context.getName());
+                        builtin = ContextUtils
+                                .compareContextParameter(item, contextType, param, paramLink, repositoryRenamedMap,
+                                        existedParams, unsameMap, deleteParams, onlySimpleShow,
+                                        StringUtils.equals(context.getName(), defaultContextName));
+                        if (!builtin && StringUtils.equals(source, currentItem.getProperty().getId())) {
+                            builtin = true;
+                        }
+                        if (builtin) {
+                            // built in
+                            if (item != null) {
+                                builtInMap.add(item, paramName);
+                            } else {
+                                builtInSet.add(paramName);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // // built-in
+        // if (contextManager instanceof JobContextManager) { // add the lost source for init process
+        // Set<String> lostParameters = ((JobContextManager) contextManager).getLostParameters();
+        // if (lostParameters != null && !lostParameters.isEmpty()) {
+        // builtInSet.addAll(lostParameters);
+        // lostParameters.clear();
+        // }
+        // }
+        // if (!builtInSet.isEmpty()) {
+        // UpdateCheckResult result = new UpdateCheckResult(builtInSet);
+        // result.setResult(EUpdateItemType.CONTEXT, EUpdateResult.BUIL_IN);
+        // if (!openedProcesses.contains(getProcess())) {
+        // result.setFromItem(true);
+        // }
+        // result.setJob(getProcess());
+        // setConfigrationForReadOnlyJob(result);
+        // contextResults.add(result);
+        // }
+        if (!builtInMap.isEmpty()) {
+            for (Item item : builtInMap.getContexts()) {
+                Set<String> names = builtInMap.get(item);
+                if (names != null && !names.isEmpty()) {
+                    System.out.println(UpdateRepositoryUtils.getRepositorySourceName(item));
+                    System.out.println("buildInMap" + names.toString());
+
+                    // UpdateCheckResult result = new UpdateCheckResult(names);
+                    // result
+                    // .setResult(EUpdateItemType.CONTEXT, EUpdateResult.BUIL_IN, null,
+                    // UpdateRepositoryUtils.getRepositorySourceName(item));
+                    // if (!openedProcesses.contains(getProcess())) {
+                    // result.setFromItem(true);
+                    // }
+                    // result.setJob(getProcess());
+                    // setConfigrationForReadOnlyJob(result);
+                    // contextResults.add(result);
+                }
+            }
+        }
+        // checkNewAddParameterForRef(existedParams, contextManager, ContextUtils.isPropagateContextVariable());
+        // // see 0004661: Add an option to propagate when add or remove a variable in a repository context to
+        // // jobs/joblets.
+        // checkPropagateContextVariable(contextResults, contextManager, deleteParams, allContextItem, refContextIds);
+
+        // update
+        if (!unsameMap.isEmpty()) {
+            for (Item item : unsameMap.getContexts()) {
+                Set<String> names = unsameMap.get(item);
+                if (names != null && !names.isEmpty()) {
+                    System.out.println(UpdateRepositoryUtils.getRepositorySourceName(item));
+                    System.out.println("update unsameMap" + names.toString());
+                    // collectUpdateResult(contextResults, EUpdateItemType.CONTEXT, EUpdateResult.UPDATE, item, names);
+                }
+            }
+        }
+        // rename
+        if (!repositoryRenamedMap.isEmpty()) {
+            for (Item item : repositoryRenamedMap.keySet()) {
+                Map<String, String> nameMap = repositoryRenamedMap.get(item);
+                if (nameMap != null && !nameMap.isEmpty()) {
+                    for (String newName : nameMap.keySet()) {
+                        String oldName = nameMap.get(newName);
+                        if (newName.equals(oldName)) {
+                            continue;
+                        }
+                        Set<String> nameSet = new HashSet<String>();
+                        nameSet.add(oldName);
+                        System.out.println("oldName: " + oldName);
+
+                        List<Object> parameterList = new ArrayList<Object>();
+                        parameterList.add(item);
+                        parameterList.add(oldName);
+                        parameterList.add(newName);
+
+                        // UpdateCheckResult result = new UpdateCheckResult(nameSet);
+                        // result
+                        // .setResult(EUpdateItemType.CONTEXT, EUpdateResult.RENAME, parameterList,
+                        // UpdateRepositoryUtils.getRepositorySourceName(item));
+                        // if (!openedProcesses.contains(getProcess())) {
+                        // result.setFromItem(true);
+                        // }
+                        // result.setJob(getProcess());
+                        // if (!isOpenedProcess(getProcess())) {
+                        // result.setItemProcess(getProcess());
+                        // }
+
+//                        setConfigrationForReadOnlyJob(result);
+//                        contextResults.add(result);
+//                    }
+                }
+            }
+            }
+        }
+        // return contextResults;
+        // return UpdateManagerUtils.executeUpdates(contextResults, false, true, true);
+
+        // if have delete-->buildin
+        // if have rename or update, popup to ask if update
+        if (!unsameMap.isEmpty() || !repositoryRenamedMap.isEmpty()) {
+            // DefaultMessagesImpl.getString("DeleteModelElementConfirmDialog.confirmResourcesDelete")
+            // confirmDialog
+            if (popupUpdateContextConfirmDialog() == Window.OK) {
+                // update and rename changes syns here
+                log.info("update context");
+                // public class UpdateCheckResult extends UpdateResult {
+
+                // change current context
+
+                // context group name A B, context variable: filter is "1=1"
+
+                // case1: change context variable name: filter -->filter1 (still repository)
+                // renamed
+                if (!repositoryRenamedMap.isEmpty()) {
+                    for (Map<String, String> renamedMap : repositoryRenamedMap.values()) {
+                        ContextViewHelper.findAndUpdateFieldUseContext(analysis, renamedMap);
+                    }
+                }
+
+                // case2: change context variable value: "1=1"-->"2=2" (still repository)
+                // changed value
+                if (!unsameMap.isEmpty()) {
+                    for (Item item : unsameMap.getContexts()) {
+                        Set<String> names = unsameMap.get(item);
+                        if (names != null && !names.isEmpty()) {
+                            System.out.println(UpdateRepositoryUtils.getRepositorySourceName(item));// Context:TdqContext
+                            System.out.println("update unsameMap" + names.toString());// context variable name: filter
+                            // collectUpdateResult(contextResults, EUpdateItemType.CONTEXT, EUpdateResult.UPDATE, item,
+                            // names);
+                        }
+                    }
+
+                }
+                // case3: delete context variable: --->change to buildIn mode
+                // case4: delete context group--->change to buildIn mode
+                //
+                // case5: add new context group-->do nothing
+                // case6: add new context variable-->do nothing
+                // case7: change context group name A->C (still repository)
+
+                org.talend.dataprofiler.core.helper.ContextViewHelper
+                        .updateAllContextInAnalysisAndReport(null, null, onlySimpleShow);
+
+                // save analysis
+                ElementWriterFactory.getInstance().createAnalysisWrite().save(analysis);
+
+                // reload current page model(analysis)
+
+            }
+        }
+
+    }
+
+    /**
+     * DOC msjian Comment method "popupUpdateContextConfirmDialog".
+     * @return
+     */
+    private int popupUpdateContextConfirmDialog() {
+        MessageDialog confirmDialog =
+                new MessageDialog(null, "Update Detection", null,
+                        "there have changes for the context used by " + this.getPartName()
+                                + ", do you want yo update?",
+                        MessageDialog.WARNING,
+                        new String[] { IDialogConstants.OK_LABEL, IDialogConstants.CANCEL_LABEL }, 0);
+        return confirmDialog.open();
     }
 
     @Override

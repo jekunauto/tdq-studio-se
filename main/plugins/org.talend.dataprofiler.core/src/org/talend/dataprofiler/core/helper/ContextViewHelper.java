@@ -140,7 +140,7 @@ public final class ContextViewHelper {
                 EList<ContextType> contextList = anaNode.getAnalysis().getContextType();
                 if (findAndUpdateContext(contextList, contextItem, ruManager, isUpdated)) {
                     if (!contextRenamedMap.isEmpty()) {
-                        findAndUpdateFieldUseContext(anaNode.getAnalysis(), contextRenamedMap.get(contextItem), isUpdated);
+                        findAndUpdateFieldUseContext(anaNode.getAnalysis(), contextRenamedMap.get(contextItem));
                     }
                     ElementWriterFactory.getInstance().createAnalysisWrite().save(anaNode.getAnalysis());
                     // refresh the analysis
@@ -154,7 +154,8 @@ public final class ContextViewHelper {
             for (ReportRepNode repNode : repList) {
                 EList<ContextType> contextList = ((TdReport) repNode.getReport()).getContext();
                 if (findAndUpdateContext(contextList, contextItem, ruManager, isUpdated)) {
-                    findAndUpdateFieldUseContext((TdReport) repNode.getReport(), ruManager.getContextRenamedMap().get(contextItem), isUpdated);
+                    findAndUpdateFieldUseContext((TdReport) repNode.getReport(),
+                            ruManager.getContextRenamedMap().get(contextItem));
                     ElementWriterFactory.getInstance().createReportWriter().save(repNode.getReport());
                     // refresh the report
                     WorkbenchUtils.refreshCurrentReportEditor(repNode.getReport().getName());
@@ -345,15 +346,15 @@ public final class ContextViewHelper {
         }
     }
 
-    private static void findAndUpdateFieldUseContext(Analysis analysis, Map<String, String> renamedMap, boolean isUpdated) {
+    public static void findAndUpdateFieldUseContext(Analysis analysis, Map<String, String> renamedMap) {
         findAndUpdateTaggedValue(analysis.getTaggedValue(), TdqAnalysisConnectionPool.NUMBER_OF_CONNECTIONS_PER_ANALYSIS,
                 renamedMap);
         // check "data filter" in analysis
         String dataFilter = AnalysisHelper.getStringDataFilter(analysis);
         if (ContextHelper.isContextVar(dataFilter)) {
-            String changedValue = ContextHelper.checkRenamedContextParameter(renamedMap, dataFilter);
-            if (StringUtils.isNotBlank(changedValue)) {
-                AnalysisHelper.setStringDataFilter(analysis, changedValue);
+            String changedContextName = ContextHelper.checkRenamedContextParameter(renamedMap, dataFilter);
+            if (StringUtils.isNotBlank(changedContextName)) {
+                AnalysisHelper.setStringDataFilter(analysis, changedContextName);
             }
         }
     }
@@ -361,9 +362,9 @@ public final class ContextViewHelper {
     private static void findAndUpdateTaggedValue(List<TaggedValue> values, String tagName, Map<String, String> renamedMap) {
         TaggedValue tagValue = TaggedValueHelper.getTaggedValue(tagName, values);
         if (ContextHelper.isContextVar(tagValue.getValue())) {
-            String changedName = ContextHelper.checkRenamedContextParameter(renamedMap, tagValue.getValue());
-            if (StringUtils.isNotBlank(changedName)) {
-                tagValue.setValue(changedName);
+            String changedContextName = ContextHelper.checkRenamedContextParameter(renamedMap, tagValue.getValue());
+            if (StringUtils.isNotBlank(changedContextName)) {
+                tagValue.setValue(changedContextName);
             }
         }
     }
@@ -389,7 +390,7 @@ public final class ContextViewHelper {
     private static String[] reportContextDBTagValues = { TaggedValueHelper.REP_DBINFO_DBNAME, TaggedValueHelper.REP_DBINFO_HOST,
             TaggedValueHelper.REP_DBINFO_PORT };
 
-    private static void findAndUpdateFieldUseContext(TdReport report, Map<String, String> renamedMap, boolean isUpdated) {
+    public static void findAndUpdateFieldUseContext(TdReport report, Map<String, String> renamedMap) {
         for (String tagName : reportContextTagValues) {
             findAndUpdateTaggedValue(report.getTaggedValue(), tagName, renamedMap);
         }
