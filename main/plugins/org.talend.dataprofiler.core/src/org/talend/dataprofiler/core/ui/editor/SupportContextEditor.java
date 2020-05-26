@@ -22,4 +22,12 @@ public abstract class SupportContextEditor extends CommonFormEditor {
     public SupportContextEditor() {
         super();
     }
+
+    /**
+     * use context link file to check whether the value is the same with repository context, if not, ask you whether to
+     * do context propagation.
+     * (almost the same logic with ProcessUpdateManager.checkContext(boolean onlySimpleShow))
+     * 
+     */
+    public abstract void checkAndUpdateContext();
 }
