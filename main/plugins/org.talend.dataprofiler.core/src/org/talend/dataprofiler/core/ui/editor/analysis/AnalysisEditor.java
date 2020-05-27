@@ -433,11 +433,10 @@ public class AnalysisEditor extends SupportContextEditor {
 
                 // save analysis
                 contextManager.saveToEmf(analysis.getContextType());
-                ElementWriterFactory.getInstance().createAnalysisWrite().save(analysis);
+                ElementWriterFactory.getInstance().createAnalysisWrite().save(currentItem, true);
 
-                // reload current model analysis
-                getMasterPage().init(this);
-
+                // reload current page's model analysis
+                getMasterPage().initialize(this);
             }
         }
     }
