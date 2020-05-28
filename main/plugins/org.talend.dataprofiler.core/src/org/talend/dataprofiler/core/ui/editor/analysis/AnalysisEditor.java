@@ -234,16 +234,6 @@ public class AnalysisEditor extends SupportContextEditor {
 
         boolean onlySimpleShow = false;
 
-        // Map<String, String> contextParamterRenamedMap = ContextHelper.getContextParamterRenamedMap(currentItem);
-        // Map<ContextItem, List<IContext>> repositoryAddGroupContext = ruManager.getRepositoryAddGroupContext();
-        // Map<ContextItem, List<IContext>> repositoryRemoveGroupContext = ruManager.getRepositoryRemoveGroupContext();
-        // Map<ContextItem, Map<String, String>> contextRenamedMap =
-        // ContextHelper.getContextParamterRenamedMap(currentItem);
-        // Map<IContext, String> renameGroupContext = ruManager.getRenameContextGroup();
-
-
-        // List<UpdateResult> contextResults = new ArrayList<UpdateResult>();
-        // final IContextManager contextManager = this.getContextManager();
          contextManager =
                 new JobContextManager(anaContextType, analysis.getDefaultContext());
 
@@ -261,8 +251,6 @@ public class AnalysisEditor extends SupportContextEditor {
         final List<ContextItem> allContextItem = ContextUtils.getAllContextItem();
 
         Set<String> refContextIds = new HashSet<String>();
-
-        // List<IProcess2> openedProcesses = UpdateManagerUtils.getOpenedProcess();
 
         Map<Item, Set<String>> existedParams = new HashMap<Item, Set<String>>();
 
@@ -315,28 +303,9 @@ public class AnalysisEditor extends SupportContextEditor {
             }
         }
 
-
-        // checkNewAddParameterForRef(existedParams, contextManager, ContextUtils.isPropagateContextVariable());
-        // // see 0004661: Add an option to propagate when add or remove a variable in a repository context to
-        // // jobs/joblets.
-        // checkPropagateContextVariable(contextResults, contextManager, deleteParams, allContextItem, refContextIds);
-
-
-        // if have delete-->buildin
         // if have rename or update, popup to ask if update
-        // if (ContextViewHelper.findAndUpdateContext(anaContextType, contextItem, null, true)) {
-        // if (popupUpdateContextConfirmDialog() == Window.OK) {
-        // if (!repositoryRenamedMap.isEmpty()) {
-        // findAndUpdateFieldUseContext(analysis, repositoryRenamedMap.get(contextItem));
-        // }
-        // ElementWriterFactory.getInstance().createAnalysisWrite().save(analysis);
-        // // refresh the analysis
-        // WorkbenchUtils.refreshCurrentAnalysisEditor(analysis.getName());
-        // }
-        // }
-
-        // if have rename or update, popup to ask if update
-        if (!unsameMap.isEmpty() || !repositoryRenamedMap.isEmpty() || !builtInMap.isEmpty()) {
+        if (!unsameMap.isEmpty() || !repositoryRenamedMap.isEmpty() || !deleteParams.isEmpty()
+                || !builtInMap.isEmpty()) {
             // DefaultMessagesImpl.getString("DeleteModelElementConfirmDialog.confirmResourcesDelete")
             // confirmDialog
             if (popupUpdateContextConfirmDialog() == Window.OK) {
@@ -413,7 +382,23 @@ public class AnalysisEditor extends SupportContextEditor {
                 // case3: delete context variable: --->change to buildIn mode
                 // case4: delete context group--->change to buildIn mode
                 if (!deleteParams.isEmpty()) {
-
+                    for (Item item : deleteParams.getContexts()) {
+                        Set<String> deleteContextNames = deleteParams.get(item);
+                        if (deleteContextNames != null && !deleteContextNames.isEmpty()) {
+                            for (IContext context : contextManager.getListContext()) {
+                                for (String deleteContextName : deleteContextNames) {
+                                    for (IContextParameter param : context.getContextParameterList()) {
+                                        if (param.isBuiltIn()) { // for buildin, no need to update
+                                            continue;
+                                        }
+                                        if (deleteContextName.equals(param.getName())) {
+                                            param.setSource(IContextParameter.BUILT_IN);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if (!builtInMap.isEmpty()) {
@@ -426,10 +411,6 @@ public class AnalysisEditor extends SupportContextEditor {
                         }
                     }
                 }
-
-                // case5: add new context group-->do nothing
-                // case6: add new context variable-->do nothing
-                // case7: change context group name A->C-->do nothing
 
                 // save analysis
                 contextManager.saveToEmf(analysis.getContextType());
