@@ -39,7 +39,9 @@ import org.talend.commons.exception.ExceptionHandler;
 import org.talend.commons.exception.PersistenceException;
 import org.talend.core.model.context.ContextUtils;
 import org.talend.core.model.context.ContextUtils.ContextItemParamMap;
+import org.talend.core.model.context.JobContext;
 import org.talend.core.model.context.JobContextManager;
+import org.talend.core.model.context.JobContextParameter;
 import org.talend.core.model.context.link.ContextLinkService;
 import org.talend.core.model.context.link.ContextParamLink;
 import org.talend.core.model.context.link.ItemContextLink;
@@ -66,6 +68,7 @@ import org.talend.dataquality.analysis.AnalysisType;
 import org.talend.dataquality.analysis.ExecutionLanguage;
 import org.talend.dataquality.helpers.AnalysisHelper;
 import org.talend.dataquality.properties.TDQAnalysisItem;
+import org.talend.designer.core.model.utils.emf.talendfile.ContextParameterType;
 import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
 import org.talend.dq.helper.PropertyHelper;
 import org.talend.dq.helper.ProxyRepositoryManager;
@@ -73,7 +76,6 @@ import org.talend.dq.helper.resourcehelper.AnaResourceFileHelper;
 import org.talend.dq.nodes.AnalysisRepNode;
 import org.talend.dq.nodes.ReportAnalysisRepNode;
 import org.talend.dq.writer.impl.ElementWriterFactory;
-import org.talend.repository.UpdateRepositoryUtils;
 import org.talend.repository.model.IRepositoryNode;
 import org.talend.repository.model.RepositoryConstants;
 import org.talend.utils.sugars.ReturnCode;
@@ -216,7 +218,6 @@ public class AnalysisEditor extends SupportContextEditor {
     private void initContext() {
         checkAndUpdateContext();
         Analysis analysis = getMasterPage().getCurrentModelElement();
-//        contextManager = new JobContextManager(analysis.getContextType(), analysis.getDefaultContext());
         this.setLastRunContextGroupName(AnalysisHelper.getContextGroupName(analysis));
     }
 
@@ -253,6 +254,8 @@ public class AnalysisEditor extends SupportContextEditor {
         Set<String> refContextIds = new HashSet<String>();
 
         Map<Item, Set<String>> existedParams = new HashMap<Item, Set<String>>();
+
+        Map<String, ContextType> needAddedContextMap = new HashMap<String, ContextType>();// source and ContextType
 
         Map<String, Item> tempItemMap = new HashMap<String, Item>();// current real rep context
         ItemContextLink itemContextLink = null;
@@ -298,23 +301,45 @@ public class AnalysisEditor extends SupportContextEditor {
                                 builtInSet.add(paramName);
                             }
                         }
+
+                        // for new added context
+                        List<ContextType> contextTypeList = ((ContextItem) item).getContext();
+
+                        if (contextTypeList.size() > contextManager.getListContext().size()) {
+                            for (ContextType type : contextTypeList) {
+                                IContext contextByName =
+                                        ContextUtils.getContextByName(contextManager, type.getName(), false);
+                                if (contextByName == null) {
+                                    needAddedContextMap.put(source, type);
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
+        // built-in
+        if (contextManager instanceof JobContextManager) { // add the lost source context parameters
+            Set<String> lostParameters = ((JobContextManager) contextManager).getLostParameters();
+            if (lostParameters != null && !lostParameters.isEmpty()) {
+                builtInSet.addAll(lostParameters);
+                lostParameters.clear();
+            }
+        }
+
         // if have rename or update, popup to ask if update
         if (!unsameMap.isEmpty() || !repositoryRenamedMap.isEmpty() || !deleteParams.isEmpty()
-                || !builtInMap.isEmpty()) {
+                || !builtInMap.isEmpty() || !builtInSet.isEmpty() || !needAddedContextMap.isEmpty()) {
             // DefaultMessagesImpl.getString("DeleteModelElementConfirmDialog.confirmResourcesDelete")
             // confirmDialog
             if (popupUpdateContextConfirmDialog() == Window.OK) {
                 // change current context
 
+                // https://jira.talendforge.org/browse/TDQ-18173
                 // context group name A B, context variable: filter is "1=1"
 
-                // case1: change context variable name: filter -->filter1 (still repository)
-                // renamed
+                // case3: change context variable name: filter -->filter1 (still repository)
                 if (!repositoryRenamedMap.isEmpty()) {
                     for (Item item : repositoryRenamedMap.keySet()) {
                         Map<String, String> nameMap = repositoryRenamedMap.get(item);
@@ -356,8 +381,7 @@ public class AnalysisEditor extends SupportContextEditor {
                     }
                 }
 
-                // case2: change context variable value: "1=1"-->"2=2" (still repository)
-                // changed value
+                // case3: change context variable value: "1=1"-->"2=2" (still repository)
                 if (!unsameMap.isEmpty()) {
                     for (Item item : unsameMap.getContexts()) {
                         Set<String> names = unsameMap.get(item);
@@ -379,8 +403,7 @@ public class AnalysisEditor extends SupportContextEditor {
                     }
                 }
 
-                // case3: delete context variable: --->change to buildIn mode
-                // case4: delete context group--->change to buildIn mode
+                // case7: delete context variable: --->change to buildIn mode
                 if (!deleteParams.isEmpty()) {
                     for (Item item : deleteParams.getContexts()) {
                         Set<String> deleteContextNames = deleteParams.get(item);
@@ -401,14 +424,42 @@ public class AnalysisEditor extends SupportContextEditor {
                     }
                 }
 
+                // case11: delete context group--->change to buildIn mode
+                if (!builtInSet.isEmpty()) {
+                    // do nothing here, just at last need save.
+                    if (builtInSet != null && !builtInSet.isEmpty()) {
+                        System.out.println("builtInSet" + builtInSet.toString());
+                    }
+                }
+
                 if (!builtInMap.isEmpty()) {
                     for (Item item : builtInMap.getContexts()) {
                         Set<String> names = builtInMap.get(item);
                         if (names != null && !names.isEmpty()) {
-                            System.out.println(UpdateRepositoryUtils.getRepositorySourceName(item));
                             System.out.println("buildInMap" + names.toString());
-
                         }
+                    }
+                }
+
+                // case 12: add new context in current used context group
+                if (!needAddedContextMap.isEmpty()) {
+                    for (String newAddedContextSource : needAddedContextMap.keySet()) {
+                        ContextType newAddedContext = needAddedContextMap.get(newAddedContextSource);
+                        IContext jobContext = new JobContext(newAddedContext.getName());
+                        List<ContextParameterType> repoParams = newAddedContext.getContextParameter();
+                        for (ContextParameterType repoParam : repoParams) {
+                            IContextParameter jobParam = new JobContextParameter();
+                            jobParam.setName(repoParam.getName());
+                            jobParam.setContext(jobContext);
+                            jobParam.setComment(repoParam.getComment());
+                            jobParam.setPrompt(repoParam.getPrompt());
+                            jobParam.setSource(newAddedContextSource);
+                            jobParam.setType(repoParam.getType());
+                            jobParam.setValue(repoParam.getValue());
+                            jobParam.setInternalId(repoParam.getInternalId());
+                            jobContext.getContextParameterList().add(jobParam);
+                        }
+                        contextManager.getListContext().add(jobContext);
                     }
                 }
 
@@ -429,7 +480,7 @@ public class AnalysisEditor extends SupportContextEditor {
     private int popupUpdateContextConfirmDialog() {
         MessageDialog confirmDialog =
                 new MessageDialog(null, "Update Detection", null,
-                        "there have changes for the context used by " + this.getPartName()
+                        "there have some context changes detected for " + this.getPartName()
                                 + ", do you want to update now?",
                         MessageDialog.WARNING,
                         new String[] { IDialogConstants.OK_LABEL, IDialogConstants.CANCEL_LABEL }, 0);
