@@ -26,7 +26,9 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 import org.talend.core.model.context.ContextUtils;
+import org.talend.core.model.context.JobContext;
 import org.talend.core.model.context.JobContextManager;
+import org.talend.core.model.context.JobContextParameter;
 import org.talend.core.model.process.IContext;
 import org.talend.core.model.process.IContextParameter;
 import org.talend.core.model.properties.ContextItem;
@@ -52,6 +54,7 @@ import org.talend.dq.nodes.ReportRepNode;
 import org.talend.dq.writer.impl.ElementWriterFactory;
 import org.talend.resource.EResourceConstant;
 
+import orgomg.cwm.objectmodel.core.ModelElement;
 import orgomg.cwm.objectmodel.core.TaggedValue;
 
 /**
@@ -295,6 +298,27 @@ public final class ContextViewHelper {
         return newCtx;
     }
 
+    public static IContext convert2IContext(ContextType contextType, String repositoryContextId) {
+        if (contextType == null) {
+            return null;
+        }
+        IContext jobContext = new JobContext(contextType.getName());
+        List<ContextParameterType> repoParams = contextType.getContextParameter();
+        for (ContextParameterType repoParam : repoParams) {
+            IContextParameter jobParam = new JobContextParameter();
+            jobParam.setName(repoParam.getName());
+            jobParam.setContext(jobContext);
+            jobParam.setComment(repoParam.getComment());
+            jobParam.setPrompt(repoParam.getPrompt());
+            jobParam.setSource(repositoryContextId);
+            jobParam.setType(repoParam.getType());
+            jobParam.setValue(repoParam.getValue());
+            jobParam.setInternalId(repoParam.getInternalId());
+            jobContext.getContextParameterList().add(jobParam);
+        }
+        return jobContext;
+    }
+
     /**
      * check each parameter's repositoryContextId, if parameter's repositoryContextId == contextId,
      *
@@ -343,6 +367,14 @@ public final class ContextViewHelper {
                     contextParam.setRepositoryContextId(null);
                 }
             }
+        }
+    }
+
+    public static void findAndUpdateFieldUseContext(ModelElement element, Map<String, String> renamedMap) {
+        if (element instanceof Analysis) {
+            findAndUpdateFieldUseContext((Analysis) element, renamedMap);
+        } else if (element instanceof TdReport) {
+            findAndUpdateFieldUseContext((TdReport) element, renamedMap);
         }
     }
 
