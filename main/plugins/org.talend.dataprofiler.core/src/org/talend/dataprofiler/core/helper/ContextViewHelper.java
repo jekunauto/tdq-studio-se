@@ -378,7 +378,7 @@ public final class ContextViewHelper {
         }
     }
 
-    public static void findAndUpdateFieldUseContext(Analysis analysis, Map<String, String> renamedMap) {
+    private static void findAndUpdateFieldUseContext(Analysis analysis, Map<String, String> renamedMap) {
         findAndUpdateTaggedValue(analysis.getTaggedValue(), TdqAnalysisConnectionPool.NUMBER_OF_CONNECTIONS_PER_ANALYSIS,
                 renamedMap);
         // check "data filter" in analysis
@@ -422,7 +422,7 @@ public final class ContextViewHelper {
     private static String[] reportContextDBTagValues = { TaggedValueHelper.REP_DBINFO_DBNAME, TaggedValueHelper.REP_DBINFO_HOST,
             TaggedValueHelper.REP_DBINFO_PORT };
 
-    public static void findAndUpdateFieldUseContext(TdReport report, Map<String, String> renamedMap) {
+    private static void findAndUpdateFieldUseContext(TdReport report, Map<String, String> renamedMap) {
         for (String tagName : reportContextTagValues) {
             findAndUpdateTaggedValue(report.getTaggedValue(), tagName, renamedMap);
         }

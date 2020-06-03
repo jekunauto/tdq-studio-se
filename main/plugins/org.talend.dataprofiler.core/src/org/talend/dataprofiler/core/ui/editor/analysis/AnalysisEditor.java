@@ -164,7 +164,6 @@ public class AnalysisEditor extends SupportContextEditor {
             if (masterPage != null) {
                 addPage(masterPage);
                 setPartName(masterPage.getIntactElemenetName());
-
                 initContext();
                 // Added 20130930 TDQ-8117, yyin
                 // init the run analysis action, to give it the analysis item and listener
@@ -183,7 +182,6 @@ public class AnalysisEditor extends SupportContextEditor {
         registerUpdateExecutionEvent();
 
     }
-
 
     /**
      * init the context for the analysis.
