@@ -12,11 +12,12 @@
 // ============================================================================
 package org.talend.dq;
 
+import java.io.InputStream;
 import java.util.List;
 
 import org.talend.commons.exception.PersistenceException;
+import org.talend.core.model.context.link.AbstractItemContextLinkService;
 import org.talend.core.model.context.link.ContextLinkService;
-import org.talend.core.model.context.link.IItemContextLinkService;
 import org.talend.core.model.context.link.ItemContextLink;
 import org.talend.core.model.properties.Item;
 import org.talend.dataquality.properties.TDQAnalysisItem;
@@ -29,8 +30,16 @@ import org.talend.dq.helper.ContextHelper;
  * this class is used for save DQ item's context link
  *
  */
-public class DQItemContextLinkService implements IItemContextLinkService {
+public class DQItemContextLinkService extends AbstractItemContextLinkService {
 
+    @Override
+    public boolean mergeItemLink(Item item, ItemContextLink backupContextLink, InputStream remoteLinkFileInput)
+            throws PersistenceException {
+        ItemContextLink remoteContextLink =
+                ContextLinkService.getInstance().doLoadContextLinkFromFile(remoteLinkFileInput);
+        List<ContextType> contextTypeList = ContextHelper.getAllContextType(item);
+        return super.saveContextLink(contextTypeList, item, backupContextLink, remoteContextLink);
+    }
     /*
      * (non-Javadoc)
      * 
@@ -53,9 +62,9 @@ public class DQItemContextLinkService implements IItemContextLinkService {
     @Override
     public boolean saveItemLink(Item item) throws PersistenceException {
         // here item can only be TDQAnalysisItem or TDQReportItem
-        // for ConnectionItem, will do save at ContextLinkService.doSaveContextLink(item)
+        // for ConnectionItem, will do save at ConnectionItemContextLinkService
         List<ContextType> contextTypeList = ContextHelper.getAllContextType(item);
-        return ContextLinkService.getInstance().saveContextLink(contextTypeList, item);
+        return super.saveContextLink(contextTypeList, item);
     }
 
     /*
