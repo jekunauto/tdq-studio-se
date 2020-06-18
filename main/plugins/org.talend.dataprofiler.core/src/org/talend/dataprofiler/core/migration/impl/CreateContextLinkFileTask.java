@@ -75,7 +75,8 @@ public class CreateContextLinkFileTask extends AbstractWorksapceUpdateTask {
      * @see org.talend.dataprofiler.core.migration.IWorkspaceMigrationTask#getOrder()
      */
     public Date getOrder() {
-        return createDate(2020, 5, 7);
+        // because this release is R2020-07, so need the date after 0619 to support R2020-06 patch
+        return createDate(2020, 6, 30);
     }
 
 }
