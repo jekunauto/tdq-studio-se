@@ -403,7 +403,7 @@ public final class ContextViewHelper {
 
         // TDQ-18572: for Redundancy Analysis, update its Where sql part for Right Columns.
         String dataFilter2 = AnalysisHelper.getStringDataFilter(analysis, 1);
-        if (dataFilter2 != null && ContextHelper.isContextVar(dataFilter2)) {
+        if (ContextHelper.isContextVar(dataFilter2)) {
             String changedContextName = ContextHelper.checkRenamedContextParameter(renamedMap, dataFilter2);
             if (StringUtils.isNotBlank(changedContextName)) {
                 AnalysisHelper.setStringDataFilter(analysis, changedContextName, 1);
@@ -413,14 +413,14 @@ public final class ContextViewHelper {
         // TDQ-18572: for Overview Analysis, update its table Filter, view Filter context
         EList<Domain> dataFilters = analysis.getParameters().getDataFilter();
         String tablePattern = DomainHelper.getTablePattern(dataFilters);
-        if (tablePattern != null && ContextHelper.isContextVar(tablePattern)) {
+        if (ContextHelper.isContextVar(tablePattern)) {
             String changedContextName = ContextHelper.checkRenamedContextParameter(renamedMap, tablePattern);
             if (StringUtils.isNotBlank(changedContextName)) {
                 DomainHelper.setDataFilterTablePattern(dataFilters, changedContextName);
             }
         }
         String viewPattern = DomainHelper.getViewPattern(dataFilters);
-        if (viewPattern != null && ContextHelper.isContextVar(viewPattern)) {
+        if (ContextHelper.isContextVar(viewPattern)) {
             String changedContextName = ContextHelper.checkRenamedContextParameter(renamedMap, viewPattern);
             if (StringUtils.isNotBlank(changedContextName)) {
                 DomainHelper.setDataFilterViewPattern(dataFilters, changedContextName);

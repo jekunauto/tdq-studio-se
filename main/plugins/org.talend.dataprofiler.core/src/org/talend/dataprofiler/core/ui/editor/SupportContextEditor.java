@@ -134,19 +134,20 @@ public abstract class SupportContextEditor extends CommonFormEditor {
                             }
                         }
 
-                        // for new added context
+                        // for new added context and TDQ-18580 add renamed context
                         List<ContextType> contextTypeList = ((ContextItem) item).getContext();
-                        if (contextTypeList.size() > contextManager.getListContext().size()) {
-                            for (ContextType type : contextTypeList) {
-                                IContext contextByName =
-                                        ContextUtils.getContextByName(contextManager, type.getName(), false);
-                                if (contextByName == null) {
-                                    List list = new ArrayList<>();
-                                    list.add(source);
-                                    list.add(type.getName());
-                                    list.add(getContextItemDisplayName(item));
-                                    needAddedContextMap.put(type, list);
-                                }
+                        for (ContextType type : contextTypeList) {
+                            if (needAddedContextMap.containsKey(type)) {
+                                continue;
+                            }
+                            IContext contextByName =
+                                    ContextUtils.getContextByName(contextManager, type.getName(), false);
+                            if (contextByName == null) {
+                                List list = new ArrayList<>();
+                                list.add(source);
+                                list.add(type.getName());
+                                list.add(getContextItemDisplayName(item));
+                                needAddedContextMap.put(type, list);
                             }
                         }
                     }
