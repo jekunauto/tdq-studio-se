@@ -398,7 +398,10 @@ public final class ContextHelper {
      * @return
      */
     public static String removeContextPreffix(String strWithContext) {
-        return strWithContext == null ? null : strWithContext.substring(CONTEXT_PREFFIX.length(),
+        if (!ContextHelper.isContextVar(strWithContext)) {
+            return strWithContext;
+        }
+        return strWithContext.substring(CONTEXT_PREFFIX.length(),
                 strWithContext.length());
     }
 
