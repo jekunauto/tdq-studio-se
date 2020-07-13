@@ -36,6 +36,7 @@ import org.talend.core.model.process.IContext;
 import org.talend.core.model.process.IContextParameter;
 import org.talend.core.model.properties.ContextItem;
 import org.talend.core.model.properties.Item;
+import org.talend.core.repository.model.ProxyRepositoryFactory;
 import org.talend.dataprofiler.core.helper.ContextViewHelper;
 import org.talend.designer.core.model.utils.emf.talendfile.ContextType;
 import org.talend.dq.helper.ContextHelper;
@@ -68,6 +69,11 @@ public abstract class SupportContextEditor extends CommonFormEditor {
         boolean onlySimpleShow = false;
 
         contextManager = new JobContextManager(currentContextTypeList, defaultContext);
+
+        // TDQ-18631: if current item is not editable, do nothing
+        if (!ProxyRepositoryFactory.getInstance().isEditableAndLockIfPossible(currentItem)) {
+            return;
+        }
 
         final String defaultContextName = contextManager.getDefaultContext().getName();
         // record the unsame
