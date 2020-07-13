@@ -219,6 +219,7 @@ public class ContextHelperTest {
         String varName = null;
         Assert.assertEquals(null, ContextHelper.removeContextPreffix(varName));
 
+        // TDQ-18578: fix a StringIndexOutOfBoundsException
         varName = ""; //$NON-NLS-1$
         Assert.assertEquals("", ContextHelper.removeContextPreffix(varName));
 
